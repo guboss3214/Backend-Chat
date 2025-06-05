@@ -60,6 +60,12 @@ const getCurrentUser = async (req, res) => {
   }
 }
 
+const generateToken = (userId) => {
+  return jwt.sign({ id: userId }, process.env.JWT_SECRET, {
+    expiresIn: process.env.JWT_EXPIRES_IN || '7d',
+  })
+}
+
 const createUser = async (req, res) => {
   try {
     const { name, email } = req.body
@@ -68,17 +74,22 @@ const createUser = async (req, res) => {
       return res.status(400).json({ message: 'Name and email are required' })
     }
 
-    // Check if user already exists
     const existingUser = await User.findOne({ email })
 
     if (existingUser) {
       return res.status(409).json({ message: 'User already exists' })
     }
 
-    // Create new user
     const newUser = await User.create({ name, email })
 
-    return res.status(201).json(newUser)
+    const token = generateToken(newUser._id)
+
+    return res.status(201).json({
+      _id: newUser._id,
+      name: newUser.name,
+      email: newUser.email,
+      token,
+    })
   } catch (error) {
     console.error('Error creating user:', error)
     return res.status(500).json({ message: 'Server error' })
